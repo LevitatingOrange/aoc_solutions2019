@@ -1,0 +1,14 @@
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_binary", "rust_doc_test")
+
+rust_binary(
+    name = "day02",
+    srcs = [
+        "src/main.rs"
+    ],
+    deps = [
+        "//intcode_computer",
+        "//cargo:log",
+        "//cargo:pretty_env_logger",
+    ],
+    edition = "2018",
+)

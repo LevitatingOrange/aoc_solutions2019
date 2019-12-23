@@ -5,6 +5,11 @@ load(
     "http_archive",
 )
 
+load(
+    "@bazel_tools//tools/build_defs/repo:git.bzl",
+    "git_repository",
+)
+
 # Python setup
 http_archive(
     name = "rules_python",
@@ -52,11 +57,48 @@ stack_snapshot(
     snapshot = "lts-14.18",
 )
 
-git_repository(
+# Rust Setup
+http_archive(
     name = "io_bazel_rules_rust",
-    remote = "https://github.com/bazelbuild/rules_rust.git",
-    tag = "0.0.5",
+    sha256 = "b6da34e057a31b8a85e343c732de4af92a762f804fc36b0baa6c001423a70ebc",
+    strip_prefix = "rules_rust-55f77017a7f5b08e525ebeab6e11d8896a4499d2",
+    urls = [
+        # Master branch as of 2019-10-07
+        "https://github.com/bazelbuild/rules_rust/archive/55f77017a7f5b08e525ebeab6e11d8896a4499d2.tar.gz",
+    ],
 )
-load("@io_bazel_rules_rust//rust:rust.bzl", "rust_repositories")
 
-rust_repositories()
+http_archive(
+    name = "bazel_skylib",
+    sha256 = "9a737999532daca978a158f94e77e9af6a6a169709c0cee274f0a4c3359519bd",
+    strip_prefix = "bazel-skylib-1.0.0",
+    url = "https://github.com/bazelbuild/bazel-skylib/archive/1.0.0.tar.gz",
+)
+
+load("@io_bazel_rules_rust//rust:repositories.bzl", "rust_repository_set")
+
+RUST_VERSION = "1.40.0"
+
+rust_repository_set(
+    name = "rust_linux_x86_64",
+    exec_triple = "x86_64-unknown-linux-gnu",
+    extra_target_triples = [],# ["wasm32-unknown-unknown"],
+    version = RUST_VERSION,
+)
+
+rust_repository_set(
+    name = "rust_darwin_x86_64",
+    exec_triple = "x86_64-apple-darwin",
+    extra_target_triples = [],# ["wasm32-unknown-unknown"],
+    version = RUST_VERSION,
+)
+
+rust_repository_set(
+    name = "rust_freebsd_x86_64",
+    exec_triple = "x86_64-unknown-freebsd",
+    extra_target_triples = [],# ["wasm32-unknown-unknown"],
+    version = RUST_VERSION,
+)
+
+load("@io_bazel_rules_rust//:workspace.bzl", "bazel_version")
+bazel_version(name = "bazel_version")
