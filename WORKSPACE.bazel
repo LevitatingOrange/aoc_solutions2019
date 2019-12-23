@@ -1,19 +1,62 @@
+workspace(name = "aoc_solutions")
+
 load(
     "@bazel_tools//tools/build_defs/repo:http.bzl",
     "http_archive",
 )
 
+# Python setup
 http_archive(
     name = "rules_python",
     url = "https://github.com/bazelbuild/rules_python/releases/download/0.0.1/rules_python-0.0.1.tar.gz",
     sha256 = "aa96a691d3a8177f3215b14b0edc9641787abaaa30363a080165d06ab65e1161",
 )
 
-load("@rules_python//python:pip.bzl", "pip_import")
-pip_import( 
-    name = "py_deps",
-    requirements = "//util:requirements.txt",
+#load("@rules_python//python:pip.bzl", "pip_import")
+#pip_import( 
+#    name = "py_deps",
+#    requirements = "//util:requirements.txt",
+#)
+
+#load("@py_deps//:requirements.bzl", "pip_install")
+#pip_install()
+
+# Haskell setup
+http_archive(
+    name = "rules_haskell",
+    strip_prefix = "rules_haskell-0.11",
+    urls = ["https://github.com/tweag/rules_haskell/archive/v0.11.tar.gz"],
+    sha256 = "40fd6de12324b515042634ba13b02fa19f5c6e274eae6350be2e4d1e023fcd90",
 )
 
-load("@py_deps//:requirements.bzl", "pip_install")
-pip_install()
+load(
+    "@rules_haskell//haskell:repositories.bzl",
+    "rules_haskell_dependencies",
+    "rules_haskell_toolchains",
+)
+
+# Setup all Bazel dependencies required by rules_haskell.
+rules_haskell_dependencies()
+
+# Download a GHC binary distribution from haskell.org and register it as a toolchain.
+rules_haskell_toolchains()
+
+load("@rules_haskell//haskell:cabal.bzl", "stack_snapshot")
+
+stack_snapshot(
+    name = "stackage",
+    packages = [
+        "base",
+        "bazel-runfiles"
+    ],
+    snapshot = "lts-14.18",
+)
+
+git_repository(
+    name = "io_bazel_rules_rust",
+    remote = "https://github.com/bazelbuild/rules_rust.git",
+    tag = "0.0.5",
+)
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_repositories")
+
+rust_repositories()

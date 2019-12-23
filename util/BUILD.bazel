@@ -1,10 +1,28 @@
+package(default_visibility = ["//visibility:public"])
+
+# filegroup(
+#     name = "aoc_session_cookie",
+#     visibility = ["//util:__pkg__"],
+#     srcs = [".session_cookie"],
+# )
+
 py_binary(
     name = "download_aoc_inputs",
     srcs = ["download_aoc_inputs.py"],
+    deps = ["@rules_python//python/runfiles"],
     data = [
-        "//:aoc_session_cookie",
-    ],
-    deps = [
-        #requirement("numpy")
+        ":.session_cookie"
     ]
+)
+
+genrule(
+    name = "aoc_inputs",
+    outs = [
+        "input_01",
+    ],
+    # srcs = [
+    #     ":aoc_session_cookie"
+    # ],
+    cmd = "$(location //util:download_aoc_inputs) 2019 && cp input_* $(@D)/",
+    tools = [":download_aoc_inputs"],
 )

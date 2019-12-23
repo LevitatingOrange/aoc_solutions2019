@@ -1,4 +1,5 @@
 import Control.Monad
+import Bazel.Runfiles
 
 fuel :: (Integral a) => a -> a
 fuel x = (x `div` 3) - 2 
@@ -14,7 +15,8 @@ problem2 :: (Integral a) => [a] -> a
 problem2 = sum . (fmap recursiveFuel)
 
 main = do
-    lines <- lines <$> readFile "problem_input.txt"
+    path <- (flip rlocation) "aoc_solutions/util/input_01" <$> create
+    lines <- lines <$> readFile path
     let masses = read <$> lines
     putStrLn $ "Solution 1: " ++ (show $ problem1 masses)
     putStrLn $ "Solution 2: " ++ (show $ problem2 masses)
