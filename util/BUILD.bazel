@@ -1,0 +1,10 @@
+py_binary(
+    name = "download_aoc_inputs",
+    srcs = ["download_aoc_inputs.py"],
+    data = [
+        "//:aoc_session_cookie",
+    ],
+    deps = [
+        #requirement("numpy")
+    ]
+)
