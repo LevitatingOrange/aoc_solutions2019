@@ -18,8 +18,9 @@ cached data dependency. Sadly I could not use the default `http_file` rules of
 Bazel, because they do not provide authentication via cookies.
 
 You have to use bazel runfiles to access these files in a robust and elegant
-manner. There are libraries for Python, Haskell and more that do that for you.
-Wherever there is no library, I will (hopefully) implement my own.
+manner. There should be a library for every language that also has Bazel rules.
+If you can't find it in your package manager, you can always depend on it via
+the rules repo itself (see `day02` for an example in Rust).
 
 # Setup 
 * Install Bazel (e.g. via Bazelisk)

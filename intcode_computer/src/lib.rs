@@ -1,3 +1,4 @@
 pub mod error;
 pub mod virtual_machine;
-mod opcode;
+pub mod opcode;
+pub mod util;

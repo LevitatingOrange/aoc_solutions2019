@@ -17,7 +17,8 @@ with open(r.Rlocation("aoc_solutions/util/.session_cookie"), "r") as f:
     session_cookie = f.readlines()[0]
 
     for day in range(1, 26):
-        if date.today() < date(year, 12, day):
+        # TODO: when is it released exactly? This will wait one day
+        if date.today() <= date(year, 12, day):
             break
 
         print("Getting input for {}/12/{}...".format(day, year))

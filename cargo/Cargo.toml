@@ -27,6 +27,11 @@ additional_flags = [
     "--cfg=use_proc_macro",
 ]
 
+[raze.crates.log.'0.4.8']
+additional_flags = [
+    "--cfg=atomic_cas"
+]
+
 # [raze.crates.regex.'1.1.6']
 # additional_deps = [
 #   # Add an unused dep

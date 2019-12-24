@@ -9,6 +9,8 @@ load(
 
 haskell_toolchain_library(name = "base")
 
+
+# TODO load bazel runfiles via the rules repo, as that is probably cheaper (?)
 haskell_binary(
     name = "day01",
     srcs = ["day01.hs"],

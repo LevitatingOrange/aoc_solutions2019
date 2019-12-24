@@ -6,9 +6,12 @@ rust_binary(
         "src/main.rs"
     ],
     deps = [
+        "@io_bazel_rules_rust//tools/runfiles",
         "//intcode_computer",
         "//cargo:log",
+        "//cargo:anyhow",
         "//cargo:pretty_env_logger",
     ],
     edition = "2018",
+    data = ["//util:input_02"],
 )
