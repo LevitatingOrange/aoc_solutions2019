@@ -40,23 +40,34 @@ impl VirtualMachine {
     }
 
     fn parameter_modes(&self) -> Result<(ParameterMode, ParameterMode, ParameterMode)> {
-        let lhs = ParameterMode::try_from(((self.memory[self.pc] /   100) % 10) as u8)?;
-        let rhs = ParameterMode::try_from(((self.memory[self.pc] /  1000) % 10) as u8)?;
-        let out = ParameterMode::try_from(((self.memory[self.pc] / 10000) % 10) as u8)?;
-        Ok((lhs, rhs, out))
+        let fst = ParameterMode::try_from(((self.memory[self.pc] /   100) % 10) as u8)?;
+        let snd = ParameterMode::try_from(((self.memory[self.pc] /  1000) % 10) as u8)?;
+        let thd = ParameterMode::try_from(((self.memory[self.pc] / 10000) % 10) as u8)?;
+        Ok((fst, snd, thd))
     }
 
     pub fn run(&mut self) -> Result<VMState> {
+        let saved_pc = self.pc;
         self.state = VMState::Running;
         loop {
             match self.state {
                 VMState::Running => (),
+                state @ VMState::Blocked => if saved_pc == self.pc {
+                    // We did not step through a single instruction. This means
+                    // that a blocked VM has been started without providing
+                    // input or taking the output. This is probably a logical
+                    // error in the calling code, so we return an error here.
+                    return Err(VMError::MachineBlocked)
+                } else {
+                    return Ok(state)
+                },
                 state => return Ok(state)
             };
             self.step()?;
         }
     }
 
+    #[must_use]
     pub fn input(&mut self, val: i32) -> Result<()> {
         if self.input_register.is_some() {
             return Err(VMError::InputAlreadyPopulated);
@@ -65,8 +76,12 @@ impl VirtualMachine {
         Ok(())
     }
 
+    #[must_use]
     pub fn output(&mut self) -> Result<i32> {
-        self.output_register.ok_or(VMError::NoOutput)
+        let val = self.output_register.ok_or(VMError::NoOutput)?;
+        self.output_register = None;
+        self.pc += 2;
+        return Ok(val)
     }
 
 
@@ -87,14 +102,11 @@ impl VirtualMachine {
         info!("Step: `{}`", opcode);
 
         match opcode {
-            Opcode::Add => {
-                self.apply2(Add::add)?;
-            },
-            Opcode::Mul => {
-                self.apply2(Mul::mul)?;
-            },
+            Opcode::Add => self.apply2(Add::add)?,
+            Opcode::Mul => self.apply2(Mul::mul)?,
+
             Opcode::In => {
-                if self.parameter_modes()?.2 != ParameterMode::Immediate {
+                if self.parameter_modes()?.2 == ParameterMode::Immediate {
                     return Err(VMError::ImmediateDestination);
                 }
                 if let Some(val) = self.input_register {
@@ -109,19 +121,21 @@ impl VirtualMachine {
                 }
             }
             Opcode::Out => {
-                unimplemented!();
-                // if let Some(val) = self.input_register {
-                //     // Output value still there, block
-                // } else {
-                //     // Take value out of input register 
-                //     let out = self.memory[self.pc + 1] as usize;
-                //     self.memory[out] = val;
-                //     self.input_register = None;
-                //     return Ok(());
-                //     self.pc += 2;
-                //     self.state = VMState::Blocked;
-                // }
+                if let Some(_) = self.input_register {
+                    // Output value still there, block
+                    self.state = VMState::Blocked;
+                } else {
+                    // Set output value
+                    self.output_register = Some(self.param(1, self.parameter_modes()?.0)?);
+                    self.state = VMState::Blocked;
+                }
             }
+            Opcode::JNZ => self.jmp_condition(|x| x != 0)?,
+            Opcode::JZ => self.jmp_condition(|x| x == 0)?,
+
+            Opcode::LT => self.apply2(|x,y| if x  < y {1} else {0})?,
+            Opcode::EQ => self.apply2(|x,y| if x == y {1} else {0})?,
+
             Opcode::Halt => {
                 self.state = VMState::Halted;
             }
@@ -135,6 +149,19 @@ impl VirtualMachine {
 
     pub fn mem_mut(&mut self) -> &mut [i32] {
         &mut self.memory[..]
+    }
+
+    fn jmp_condition(&mut self, cond: fn(i32) -> bool) -> Result<()> {
+        if cond(self.param(1, self.parameter_modes()?.0)?) {
+            let new_pc = self.param(2, self.parameter_modes()?.1)?;
+            if new_pc < 0 {
+                return Err(VMError::NegativeAddress);
+            }
+            self.pc = new_pc as usize;
+        } else {
+            self.pc += 3;
+        }
+        Ok(())
     }
 
     fn param(&mut self, offset: usize, mode: ParameterMode) -> Result<i32> {
