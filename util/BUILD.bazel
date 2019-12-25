@@ -41,8 +41,8 @@ genrule(
         "input_21",
         "input_22",
         "input_23",
-       # "input_24",
-       # "input_25",
+        "input_24",
+#        "input_25",
     ],
     # srcs = [
     #     ":aoc_session_cookie"

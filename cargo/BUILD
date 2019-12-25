@@ -10,7 +10,11 @@ licenses([
 ])
 alias(
     name = "anyhow",
-    actual = "//cargo/vendor/anyhow-1.0.25:anyhow",
+    actual = "//cargo/vendor/anyhow-1.0.26:anyhow",
+)
+alias(
+    name = "itertools",
+    actual = "//cargo/vendor/itertools-0.8.2:itertools",
 )
 alias(
     name = "log",

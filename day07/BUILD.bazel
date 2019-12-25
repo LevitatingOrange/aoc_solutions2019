@@ -1,0 +1,18 @@
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_binary", "rust_doc_test")
+
+rust_binary(
+    name = "day07",
+    srcs = [
+        "src/main.rs"
+    ],
+    deps = [
+        "@io_bazel_rules_rust//tools/runfiles",
+        "//intcode_computer",
+        "//cargo:log",
+        "//cargo:anyhow",
+        "//cargo:pretty_env_logger",
+        "//cargo:itertools"
+    ],
+    edition = "2018",
+    data = ["//util:input_07"],
+)
