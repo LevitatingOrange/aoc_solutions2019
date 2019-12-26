@@ -25,7 +25,7 @@ pub enum VMError {
     InputAlreadyPopulated,
     #[error("Machine has no output to take")]
     NoOutput,
-    #[error("Position Operand is negative")]
+    #[error("Operand tried to access negative address")]
     NegativeAddress,
     #[error("Destination Operand is immediate")]
     ImmediateDestination,

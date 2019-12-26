@@ -71,9 +71,9 @@ impl Memory {
         Ok(())
     }
 
-    fn get_page(&self, address: usize) -> & Box<[MemoryValueType]> {
-        &self.page_table[&self.table_index(address)]
-    }
+    // fn get_page(&self, address: usize) -> & Box<[MemoryValueType]> {
+    //     &self.page_table[&self.table_index(address)]
+    // }
 
     fn get_page_mut(&mut self, address: usize) -> &mut Box<[MemoryValueType]> {
         self.page_table.entry(self.table_index(address)).or_insert(
@@ -82,12 +82,11 @@ impl Memory {
     } 
 }
 
-
 impl Index<usize> for Memory {
     type Output = MemoryValueType;
 
     fn index(&self, address: usize) -> &Self::Output {
-        &self.get_page(address)[self.page_index(address)]
+        self.page_table.get(&self.table_index(address)).map(|s| &s[self.page_index(address)]).unwrap_or(&0)
     }
 } 
 
@@ -121,9 +120,9 @@ mod tests {
     fn test_consecutive_test() {
         let mut mem: Memory = Memory::new();
 
-        let s = vec![10, 16246, 7371, 317,234, 626, 1212, 253];
-        let s1 = vec![10, 16246, 7371, 317,234, 626, 1212, 253, 138, 12, 147, ];
-        let s2 = vec![10, 16246, 7371, 317,234, 626, 1212, 253, 138, 12, 147, 23423, 23423, 243, 242, 153, 2];
+        let s  = vec![10, 16246, 7371, 317, 234, 626, 1212, 253];
+        let s1 = vec![10, 16246, 7371, 317, 234, 626, 1212, 253, 138, 12, 147, ];
+        let s2 = vec![10, 16246, 7371, 317 ,234, 626, 1212, 253, 138, 12, 147, 23423, 23423, 243, 242, 153, 2];
 
         mem.insert_contiguous(0, &s).expect("Should be aligned");
         mem.insert_contiguous(7, &s).expect_err("Should not be aligned");

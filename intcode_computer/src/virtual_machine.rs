@@ -3,7 +3,7 @@ use crate::error::*;
 use crate::memory::{Memory, MemoryValueType};
 use std::convert::TryFrom;
 use std::ops::{Add, Mul};
-use log::{info, debug};
+use log::{debug};
 use std::fmt::{Display, Debug};
 use std::ops::{Index, IndexMut};
 
@@ -21,6 +21,7 @@ pub struct VirtualMachine {
     // now
     memory: Memory,
     pc: usize,
+    relative_base: usize,
     state: VMState,
     input_register: Option<MemoryValueType>,
     output_register: Option<MemoryValueType>
@@ -33,6 +34,7 @@ impl VirtualMachine {
         Ok(VirtualMachine {
             memory: mem,
             pc: 0,
+            relative_base: 0,
             state: VMState::Paused,
             input_register: None,
             output_register: None
@@ -44,11 +46,11 @@ impl VirtualMachine {
         Ok(opcode)
     }
 
-    fn parameter_modes(&self) -> Result<(ParameterMode, ParameterMode, ParameterMode)> {
+    fn parameter_modes(&self) -> Result<[ParameterMode; 3]> {
         let fst = ParameterMode::try_from(((self.memory[self.pc] /   100) % 10) as u8)?;
         let snd = ParameterMode::try_from(((self.memory[self.pc] /  1000) % 10) as u8)?;
         let thd = ParameterMode::try_from(((self.memory[self.pc] / 10000) % 10) as u8)?;
-        Ok((fst, snd, thd))
+        Ok([fst, snd, thd])
     }
 
     pub fn run(&mut self) -> Result<VMState> {
@@ -57,15 +59,16 @@ impl VirtualMachine {
         loop {
             match self.state {
                 VMState::Running => (),
-                state @ VMState::Blocked => if saved_pc == self.pc {
-                    // We did not step through a single instruction. This means
-                    // that a blocked VM has been started without providing
-                    // input or taking the output. This is probably a logical
-                    // error in the calling code, so we return an error here.
-                    return Err(VMError::MachineBlocked)
-                } else {
-                    return Ok(state)
-                },
+                // this just causes problems
+                // state @ VMState::Blocked => if saved_pc == self.pc {
+                //     // We did not step through a single instruction. This means
+                //     // that a blocked VM has been started without providing
+                //     // input or taking the output. This is probably a logical
+                //     // error in the calling code, so we return an error here.
+                //     return Err(VMError::MachineBlocked)
+                // } else {
+                //     return Ok(state)
+                // },
                 state => return Ok(state)
             };
             self.step()?;
@@ -83,9 +86,7 @@ impl VirtualMachine {
 
     #[must_use]
     pub fn output(&mut self) -> Result<MemoryValueType> {
-        let val = self.output_register.ok_or(VMError::NoOutput)?;
-        self.output_register = None;
-        self.pc += 2;
+        let val = self.output_register.take().ok_or(VMError::NoOutput)?;
         return Ok(val)
     }
 
@@ -99,25 +100,28 @@ impl VirtualMachine {
             return Err(VMError::MachineBlocked)
         }
 
+        if let Some(_) = self.output_register {
+            return Err(VMError::MachineBlocked);
+        }
+
         // if self.pc >= MEMORY_SIZE {
         //     return Err(VMError::MemorySize)
         // }
 
         let opcode = self.opcode()?;
-        info!("Step: `{}`", opcode);
+        debug!("Step at {}: `{}` with parameter modes {:?}", self.pc, opcode, self.parameter_modes()?);
 
         match opcode {
             Opcode::Add => self.apply2(Add::add)?,
             Opcode::Mul => self.apply2(Mul::mul)?,
 
             Opcode::In => {
-                if self.parameter_modes()?.2 == ParameterMode::Immediate {
+                if self.parameter_modes()?[0] == ParameterMode::Immediate {
                     return Err(VMError::ImmediateDestination);
                 }
                 if let Some(val) = self.input_register {
-                    // Take value out of input register 
-                    let out = self.memory[self.pc + 1] as usize;
-                    self.memory[out] = val;
+                    let in_address = self.param_address(0)?;
+                    self.memory[in_address] = val;
                     self.input_register = None;
                     self.pc += 2;
                 } else {
@@ -126,20 +130,24 @@ impl VirtualMachine {
                 }
             }
             Opcode::Out => {
-                if let Some(_) = self.input_register {
-                    // Output value still there, block
-                    self.state = VMState::Blocked;
-                } else {
-                    // Set output value
-                    self.output_register = Some(self.param(1, self.parameter_modes()?.0)?);
-                    self.state = VMState::Blocked;
-                }
+                self.output_register = Some(self.param(0)?);
+                self.state = VMState::Blocked;
+                self.pc += 2;
             }
             Opcode::JNZ => self.jmp_condition(|x| x != 0)?,
             Opcode::JZ => self.jmp_condition(|x| x == 0)?,
 
             Opcode::LT => self.apply2(|x,y| if x  < y {1} else {0})?,
             Opcode::EQ => self.apply2(|x,y| if x == y {1} else {0})?,
+            Opcode::RBO => {
+                let address = self.param(0)? as isize;
+                let new_base = self.relative_base as isize + address;
+                if new_base < 0 {
+                    return Err(VMError::NegativeAddress);
+                }
+                self.relative_base = new_base as usize;
+                self.pc += 2;
+            },
 
             Opcode::Halt => {
                 self.state = VMState::Halted;
@@ -149,8 +157,8 @@ impl VirtualMachine {
     }
 
     fn jmp_condition(&mut self, cond: fn(MemoryValueType) -> bool) -> Result<()> {
-        if cond(self.param(1, self.parameter_modes()?.0)?) {
-            let new_pc = self.param(2, self.parameter_modes()?.1)?;
+        if cond(self.param(0)?) {
+            let new_pc = self.param(1)?;
             if new_pc < 0 {
                 return Err(VMError::NegativeAddress);
             }
@@ -161,35 +169,36 @@ impl VirtualMachine {
         Ok(())
     }
 
-    fn param(&mut self, offset: usize, mode: ParameterMode) -> Result<MemoryValueType> {
-        Ok(match mode {
+    fn param_address(&self, offset: usize) -> Result<usize> {
+        let address = match self.parameter_modes()?[offset] {
             ParameterMode::Position => {
-                if self.memory[self.pc + offset] < 0 {
-                    return Err(VMError::NegativeAddress)
-                }
-                self.memory[self.memory[self.pc + offset] as usize]
+                self.memory[self.pc + offset + 1] as isize
             },
             ParameterMode::Immediate => {
-                self.memory[self.pc + offset]
-
+                (self.pc + offset + 1) as isize
+            },
+            ParameterMode::Relative => {
+                self.relative_base as isize + (self.memory[self.pc + offset + 1] as isize)
             }
-        })
+        };
+
+        if address < 0 {
+            return Err(VMError::NegativeAddress)
+        }
+        Ok(address as usize)
         
     }
+
+    fn param(&self, offset: usize) -> Result<MemoryValueType> {
+        Ok(self.memory[self.param_address(offset)?])
+    }
+
     fn apply2(&mut self, f:  fn(MemoryValueType, MemoryValueType) -> MemoryValueType) -> Result<()> {
-        let (lhs_mode, rhs_mode, out_mode) = self.parameter_modes()?;
-        if out_mode == ParameterMode::Immediate {
+        if self.parameter_modes()?[2] == ParameterMode::Immediate {
             return Err(VMError::ImmediateDestination);
         }
-        if self.memory[self.pc + 3] < 0 {
-            return Err(VMError::NegativeAddress);
-        }
-
-        let lhs = self.param(1, lhs_mode)?;
-        let rhs = self.param(2, rhs_mode)?;
-        let out = self.memory[self.pc + 3] as usize;
-
-        self.memory[out] = f(lhs, rhs);
+        let out_address = self.param_address(2)?;
+        self.memory[out_address] = f(self.param(0)?, self.param(1)?);
         self.pc += 4;
 
         Ok(())

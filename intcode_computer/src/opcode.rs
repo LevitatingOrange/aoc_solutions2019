@@ -12,6 +12,7 @@ pub enum Opcode {
       JZ =  6,
       LT =  7,
       EQ =  8,
+    RBO =  9,
     Halt = 99
 }
 
@@ -19,7 +20,8 @@ pub enum Opcode {
 #[repr(u8)]
 pub enum ParameterMode {
     Position = 0,
-    Immediate = 1,   
+    Immediate = 1,
+    Relative = 2   
 }
 
 impl fmt::Display for Opcode {
@@ -33,6 +35,7 @@ impl fmt::Display for Opcode {
             Opcode::JZ => write!(f, "Jump if false"),            
             Opcode::LT => write!(f, "Less than"),
             Opcode::EQ => write!(f, "Equals"),
+            Opcode::RBO => write!(f, "Relative base offset"),
             Opcode::Halt => write!(f, "Halt"),
         }
     }
