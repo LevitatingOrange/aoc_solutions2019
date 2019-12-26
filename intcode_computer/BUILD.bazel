@@ -7,6 +7,7 @@ rust_library(
     srcs = [
         "src/lib.rs",
         "src/error.rs",
+        "src/memory.rs",
         "src/opcode.rs",
         "src/virtual_machine.rs",
         "src/util.rs"
@@ -22,4 +23,5 @@ rust_library(
 rust_test(
     name = "intcode_computer_test",
     crate = ":intcode_computer",
+    timeout="short"
 )

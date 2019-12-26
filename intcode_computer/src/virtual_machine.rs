@@ -1,8 +1,11 @@
 use crate::opcode::{Opcode, ParameterMode};
 use crate::error::*;
+use crate::memory::{Memory, MemoryValueType};
 use std::convert::TryFrom;
 use std::ops::{Add, Mul};
 use log::{info, debug};
+use std::fmt::{Display, Debug};
+use std::ops::{Index, IndexMut};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum VMState {
@@ -14,19 +17,21 @@ pub enum VMState {
 
 pub struct VirtualMachine {
     // TODO: I originally wanted to have a byte memory for space efficiency.
-    // Sadly, that makes operand parsing non trivial so I opted for i32's for
+    // Sadly, that makes operand parsing non trivial so I opted for MemoryValueType's for
     // now
-    memory: Vec<i32>,
+    memory: Memory,
     pc: usize,
     state: VMState,
-    input_register: Option<i32>,
-    output_register: Option<i32>
+    input_register: Option<MemoryValueType>,
+    output_register: Option<MemoryValueType>
 }
 
 impl VirtualMachine {
-    pub fn new(program: Vec<i32>) -> Result<VirtualMachine> {
+    pub fn new(program: &[MemoryValueType]) -> Result<VirtualMachine> {
+        let mut mem = Memory::new();
+        mem.insert_contiguous(0, program);
         Ok(VirtualMachine {
-            memory: program,
+            memory: mem,
             pc: 0,
             state: VMState::Paused,
             input_register: None,
@@ -68,7 +73,7 @@ impl VirtualMachine {
     }
 
     #[must_use]
-    pub fn input(&mut self, val: i32) -> Result<()> {
+    pub fn input(&mut self, val: MemoryValueType) -> Result<()> {
         if self.input_register.is_some() {
             return Err(VMError::InputAlreadyPopulated);
         }
@@ -77,7 +82,7 @@ impl VirtualMachine {
     }
 
     #[must_use]
-    pub fn output(&mut self) -> Result<i32> {
+    pub fn output(&mut self) -> Result<MemoryValueType> {
         let val = self.output_register.ok_or(VMError::NoOutput)?;
         self.output_register = None;
         self.pc += 2;
@@ -143,15 +148,7 @@ impl VirtualMachine {
         Ok(())
     }
 
-    pub fn mem(&self) -> & [i32] {
-        &self.memory[..]
-    }
-
-    pub fn mem_mut(&mut self) -> &mut [i32] {
-        &mut self.memory[..]
-    }
-
-    fn jmp_condition(&mut self, cond: fn(i32) -> bool) -> Result<()> {
+    fn jmp_condition(&mut self, cond: fn(MemoryValueType) -> bool) -> Result<()> {
         if cond(self.param(1, self.parameter_modes()?.0)?) {
             let new_pc = self.param(2, self.parameter_modes()?.1)?;
             if new_pc < 0 {
@@ -164,7 +161,7 @@ impl VirtualMachine {
         Ok(())
     }
 
-    fn param(&mut self, offset: usize, mode: ParameterMode) -> Result<i32> {
+    fn param(&mut self, offset: usize, mode: ParameterMode) -> Result<MemoryValueType> {
         Ok(match mode {
             ParameterMode::Position => {
                 if self.memory[self.pc + offset] < 0 {
@@ -179,7 +176,7 @@ impl VirtualMachine {
         })
         
     }
-    fn apply2(&mut self, f:  fn(i32, i32) -> i32) -> Result<()> {
+    fn apply2(&mut self, f:  fn(MemoryValueType, MemoryValueType) -> MemoryValueType) -> Result<()> {
         let (lhs_mode, rhs_mode, out_mode) = self.parameter_modes()?;
         if out_mode == ParameterMode::Immediate {
             return Err(VMError::ImmediateDestination);
@@ -197,4 +194,18 @@ impl VirtualMachine {
 
         Ok(())
     } 
+}
+
+impl Index<usize> for VirtualMachine {
+    type Output = MemoryValueType;
+
+    fn index(&self, address: usize) -> &Self::Output {
+        &self.memory[address]
+    }
+} 
+
+impl IndexMut<usize> for VirtualMachine {
+    fn index_mut(&mut self, address: usize) -> &mut Self::Output {
+        &mut self.memory[address]
+    }
 }

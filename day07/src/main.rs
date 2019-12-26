@@ -7,24 +7,13 @@ use intcode_computer::util::string_to_program;
 use intcode_computer::virtual_machine::{VirtualMachine, VMState};
 use itertools::Itertools;
 
-// fn run_amplifiers(program: &[i32], phase_settings: &[i32]) -> Result<i32> {
-//     let mut input_signal = 0;
-//     for phase_setting in phase_settings {
-//         let mut vm = VirtualMachine::new(program.to_vec())?;
-//         vm.input(*phase_setting)?;
-//         vm.run()?;
-//         vm.input(input_signal)?;
-//         vm.run()?;
-//         input_signal = vm.output()?;
-//     }
-//     Ok(input_signal)
-// }
+use intcode_computer::memory::MemoryValueType;
 
-fn run_amplifiers(program: &[i32], phase_settings: &[i32]) -> Result<i32> {
+fn run_amplifiers(program: &[MemoryValueType], phase_settings: &[MemoryValueType]) -> Result<MemoryValueType> {
     let mut amplifiers = Vec::with_capacity(phase_settings.len());
 
     for phase_setting in phase_settings {
-        let mut amplifier = VirtualMachine::new(program.to_vec())?;
+        let mut amplifier = VirtualMachine::new(&program)?;
         amplifier.input(*phase_setting)?;
         // let machine process first input
         amplifier.run()?;
@@ -48,14 +37,11 @@ fn run_amplifiers(program: &[i32], phase_settings: &[i32]) -> Result<i32> {
     }
 }
 
-fn solution_1(input: &str) -> Result<i32> {
-    info!("Executing intcode program \"{}\"", input);
-    let mut program = string_to_program(input);
-
+fn solution_1(program: &[MemoryValueType]) -> Result<MemoryValueType> {
     let mut max = 0;
      
     for phase_settings in (0..=4).permutations(5) {
-        let new = run_amplifiers(&program, &phase_settings[0..5])?;
+        let new = run_amplifiers(program, &phase_settings[0..5])?;
         if new > max {
             max = new;
         }
@@ -64,14 +50,11 @@ fn solution_1(input: &str) -> Result<i32> {
     Ok(max)
 }
 
-fn solution_2(input: &str) -> Result<i32> {
-    info!("Executing intcode program \"{}\"", input);
-    let mut program = string_to_program(input);
-
+fn solution_2(program: &[MemoryValueType]) -> Result<MemoryValueType> {
     let mut max = 0;
      
     for phase_settings in (5..=9).permutations(5) {
-        let new = run_amplifiers(&program, &phase_settings[0..5])?;
+        let new = run_amplifiers(program, &phase_settings[0..5])?;
         if new > max {
             max = new;
         }
@@ -80,7 +63,7 @@ fn solution_2(input: &str) -> Result<i32> {
     Ok(max)
 }
 
-// fn solution_2(input: &str) -> Result<i32> {
+// fn solution_2(input: &str) -> Result<MemoryValueType> {
 //     info!("Executing intcode program \"{}\"", input);
 //     let mut program = string_to_program(input);
 //     let mut vm = VirtualMachine::new(program)?;
@@ -103,13 +86,15 @@ fn main() {
     let path = r.rlocation("aoc_solutions/util/input_07");
 
     let input = read_to_string(path).unwrap();
+    info!("Executing intcode program \"{}\"", input);
+    let program = string_to_program(&input);
 
-    match solution_1(&input) {
+    match solution_1(&program) {
         Ok(val) => println!("Solution 1: {}", val),
         Err(err) => error!("Could not execute first program: {}", err),
     }
 
-    match solution_2(&input) {
+    match solution_2(&program) {
         Ok(val) => println!("Solution 2: {}", val),
         Err(err) => error!("Could not execute second program: {}", err),
     }

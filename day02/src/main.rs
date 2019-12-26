@@ -5,34 +5,25 @@ use std::fs::read_to_string;
 use intcode_computer::error::*;
 use intcode_computer::util::string_to_program;
 use intcode_computer::virtual_machine::VirtualMachine;
+use intcode_computer::memory::MemoryValueType;
 
 
-fn solution_1(input: &str) -> Result<i32> {
-    info!("Executing intcode program \"{}\"", input);
-    let mut program = string_to_program(input);
-    program[1] = 12;
-    program[2] = 2;
+fn solution_1(program: &[MemoryValueType]) -> Result<MemoryValueType> {
     let mut vm = VirtualMachine::new(program)?;
-    debug!("Memory before run: \"{:?}\"", vm.mem());
+
     vm.run()?;
-    debug!("Memory after run: \"{:?}\"", vm.mem());
-    Ok(vm.mem()[0])
+    Ok(vm[0])
 }
 
-fn solution_2(input: &str) -> Result<i32> {
-    info!("Executing intcode program \"{}\"", input);
-    let program = string_to_program(input);
-
+fn solution_2(program: &[MemoryValueType]) -> Result<MemoryValueType> {
     for noun in 0..=99 {
         for verb in 0..=99 {
-            let mut current_program = program.to_vec();
-            current_program[1] = noun;
-            current_program[2] = verb;
-            let mut vm = VirtualMachine::new(current_program)?;
-
+            let mut vm = VirtualMachine::new(program)?;
+            vm[1] = noun;
+            vm[2] = verb;
             vm.run()?;
 
-            if vm.mem()[0] == 19690720 {
+            if vm[0] == 19690720 {
                 return Ok(100 * noun + verb)
             }
         }
@@ -48,13 +39,15 @@ fn main() {
     let path = r.rlocation("aoc_solutions/util/input_02");
 
     let input = read_to_string(path).unwrap();
+    info!("Executing intcode program \"{}\"", input);
+    let mut program = string_to_program(&input);
 
-    match solution_1(&input) {
+    match solution_1(&program) {
         Ok(val) => println!("Solution 1: {}", val),
         Err(err) => error!("Could not execute first program: {}", err),
     }
 
-    match solution_2(&input) {
+    match solution_2(&program) {
         Ok(val) => println!("Solution 2: {}", val),
         Err(err) => error!("Could not execute second program: {}", err),
     }

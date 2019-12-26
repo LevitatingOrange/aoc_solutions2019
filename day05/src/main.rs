@@ -5,11 +5,10 @@ use std::fs::read_to_string;
 use intcode_computer::error::*;
 use intcode_computer::util::string_to_program;
 use intcode_computer::virtual_machine::{VirtualMachine, VMState};
+use intcode_computer::memory::MemoryValueType;
 
 
-fn solution_1(input: &str) -> Result<i32> {
-    info!("Executing intcode program \"{}\"", input);
-    let mut program = string_to_program(input);
+fn solution_1(program: &[MemoryValueType]) -> Result<MemoryValueType> {
     let mut vm = VirtualMachine::new(program)?;
 
     vm.input(1)?;
@@ -23,9 +22,7 @@ fn solution_1(input: &str) -> Result<i32> {
     Ok(code)
 }
 
-fn solution_2(input: &str) -> Result<i32> {
-    info!("Executing intcode program \"{}\"", input);
-    let mut program = string_to_program(input);
+fn solution_2(program: &[MemoryValueType]) -> Result<MemoryValueType> {
     let mut vm = VirtualMachine::new(program)?;
 
     vm.input(5)?;
@@ -46,13 +43,15 @@ fn main() {
     let path = r.rlocation("aoc_solutions/util/input_05");
 
     let input = read_to_string(path).unwrap();
+    info!("Executing intcode program \"{}\"", input);
+    let program = string_to_program(&input);
 
-    match solution_1(&input) {
+    match solution_1(&program) {
         Ok(val) => println!("Solution 1: {}", val),
         Err(err) => error!("Could not execute first program: {}", err),
     }
 
-    match solution_2(&input) {
+    match solution_2(&program) {
         Ok(val) => println!("Solution 2: {}", val),
         Err(err) => error!("Could not execute second program: {}", err),
     }
